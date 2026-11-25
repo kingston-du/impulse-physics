@@ -1,0 +1,9 @@
+build/
+build-*/
+cmake-build-*/
+.vscode/
+.idea/
+.DS_Store
+*.swp
+frames/
+compile_commands.json
