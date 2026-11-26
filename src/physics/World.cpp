@@ -1,5 +1,7 @@
 #include "physics/World.hpp"
 
+#include "physics/Collision.hpp"
+
 namespace impulse {
 
 int World::addBody(const Body& body) {
@@ -8,9 +10,27 @@ int World::addBody(const Body& body) {
 }
 
 void World::step(float dt) {
+    findContacts();
     integrateForces(dt);
     integrateVelocities(dt);
     if (useBounds) enforceBounds();
+}
+
+void World::findContacts() {
+    contacts_.clear();
+    const int n = static_cast<int>(bodies_.size());
+    // brute force O(n^2) for now
+    for (int i = 0; i < n; ++i) {
+        for (int j = i + 1; j < n; ++j) {
+            if (bodies_[i].isStatic() && bodies_[j].isStatic()) continue;
+            Manifold m;
+            if (collide(bodies_[i], bodies_[j], m)) {
+                m.a = i;
+                m.b = j;
+                contacts_.push_back(m);
+            }
+        }
+    }
 }
 
 void World::integrateForces(float dt) {

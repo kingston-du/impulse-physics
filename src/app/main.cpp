@@ -55,6 +55,11 @@ int main() {
             const auto& c = std::get<Circle>(b.shape);
             DrawCircleV(toScreen(b.position), c.radius * kPixelsPerMeter, Color{120, 180, 255, 255});
         }
+        for (const Manifold& m : world.contacts()) {
+            for (int i = 0; i < m.count; ++i) {
+                DrawCircleV(toScreen(m.contacts[i].position), 3.0f, RED);
+            }
+        }
         DrawText("impulse", 20, 20, 20, RAYWHITE);
         DrawFPS(kScreenW - 100, 20);
         EndDrawing();

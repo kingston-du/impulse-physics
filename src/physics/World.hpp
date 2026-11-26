@@ -4,6 +4,7 @@
 
 #include "math/Vec2.hpp"
 #include "physics/Body.hpp"
+#include "physics/Manifold.hpp"
 
 namespace impulse {
 
@@ -24,13 +25,16 @@ public:
 
     std::vector<Body>& bodies() { return bodies_; }
     const std::vector<Body>& bodies() const { return bodies_; }
+    const std::vector<Manifold>& contacts() const { return contacts_; }
 
 private:
+    void findContacts();
     void integrateForces(float dt);
     void integrateVelocities(float dt);
     void enforceBounds();
 
     std::vector<Body> bodies_;
+    std::vector<Manifold> contacts_;
 };
 
 } // namespace impulse
