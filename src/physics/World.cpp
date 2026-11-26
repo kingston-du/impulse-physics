@@ -16,6 +16,7 @@ void World::step(float dt) {
     integrateForces(dt);
     solveVelocities();
     integrateVelocities(dt);
+    correctPositions();
     if (useBounds) enforceBounds();
 }
 
@@ -92,6 +93,24 @@ void World::integrateVelocities(float dt) {
         b.angle += b.angularVelocity * dt;
         b.force = {};
         b.torque = 0.0f;
+    }
+}
+
+void World::correctPositions() {
+    for (const Manifold& m : contacts_) {
+        Body& A = bodies_[m.a];
+        Body& B = bodies_[m.b];
+        float invMassSum = A.invMass + B.invMass;
+        if (invMassSum <= 0.0f) continue;
+
+        float pen = 0.0f;
+        for (int i = 0; i < m.count; ++i) pen = std::max(pen, m.contacts[i].penetration);
+
+        float amount = std::max(pen - penetrationSlop, 0.0f) / invMassSum * correctionPercent;
+        Vec2 correction = m.normal * amount;
+        // heavier bodies move less
+        A.position -= correction * A.invMass;
+        B.position += correction * B.invMass;
     }
 }
 

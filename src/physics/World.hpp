@@ -17,6 +17,11 @@ public:
     // contacts keep hopping because gravity adds a little speed every step
     float restitutionThreshold = 0.5f;
 
+    // linear projection to fix leftover overlap. slop lets bodies overlap a
+    // tiny bit so contacts don't flicker on and off every frame.
+    float penetrationSlop = 0.01f;
+    float correctionPercent = 0.4f;
+
     // circles get clamped inside this box when enabled. stand in for real
     // walls until there's a static shape to collide with.
     bool useBounds = true;
@@ -38,6 +43,7 @@ private:
     void solveVelocities();
     void resolveContact(const Manifold& m);
     void integrateVelocities(float dt);
+    void correctPositions();
     void enforceBounds();
 
     std::vector<Body> bodies_;
