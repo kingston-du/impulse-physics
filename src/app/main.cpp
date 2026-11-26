@@ -31,6 +31,30 @@ void integrate(std::vector<Body>& bodies, Vec2 gravity, float dt) {
     }
 }
 
+// temporary until real collision shapes exist. reflect off the screen edges.
+void bounceOffWalls(std::vector<Body>& bodies, float width, float height) {
+    for (Body& b : bodies) {
+        float r = std::get<Circle>(b.shape).radius;
+        float e = b.restitution;
+        if (b.position.x - r < 0.0f && b.velocity.x < 0.0f) {
+            b.position.x = r;
+            b.velocity.x *= -e;
+        }
+        if (b.position.x + r > width && b.velocity.x > 0.0f) {
+            b.position.x = width - r;
+            b.velocity.x *= -e;
+        }
+        if (b.position.y - r < 0.0f && b.velocity.y < 0.0f) {
+            b.position.y = r;
+            b.velocity.y *= -e;
+        }
+        if (b.position.y + r > height && b.velocity.y > 0.0f) {
+            b.position.y = height - r;
+            b.velocity.y *= -e;
+        }
+    }
+}
+
 } // namespace
 
 int main() {
@@ -41,8 +65,13 @@ int main() {
     const Vec2 gravity{0.0f, -9.81f};
     std::vector<Body> bodies;
     for (int i = 0; i < 10; ++i) {
-        bodies.emplace_back(Circle{0.5f + 0.1f * i}, Vec2{6.0f + 5.0f * i, 30.0f});
+        Body& b = bodies.emplace_back(Circle{0.5f + 0.1f * i}, Vec2{6.0f + 5.0f * i, 30.0f});
+        b.velocity = {(i % 2 ? 1.0f : -1.0f) * 4.0f, 0.0f};
+        b.restitution = 0.8f;
     }
+
+    const float worldW = kScreenW / kPixelsPerMeter;
+    const float worldH = kScreenH / kPixelsPerMeter;
 
     float accumulator = 0.0f;
 
@@ -55,6 +84,7 @@ int main() {
 
         while (accumulator >= kDt) {
             integrate(bodies, gravity, kDt);
+            bounceOffWalls(bodies, worldW, worldH);
             accumulator -= kDt;
         }
 
