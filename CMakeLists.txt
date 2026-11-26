@@ -15,15 +15,18 @@ option(IMPULSE_BUILD_APP "Build the raylib demo app" ON)
 
 include(FetchContent)
 
-# header only for now, the physics sources get added later
-add_library(impulse_core INTERFACE)
-target_include_directories(impulse_core INTERFACE src)
-
 if(MSVC)
   set(IMPULSE_WARNINGS /W4)
 else()
   set(IMPULSE_WARNINGS -Wall -Wextra -Wpedantic)
 endif()
+
+# all the physics lives here, no raylib allowed
+add_library(impulse_core STATIC
+  src/physics/Body.cpp
+)
+target_include_directories(impulse_core PUBLIC src)
+target_compile_options(impulse_core PRIVATE ${IMPULSE_WARNINGS})
 
 if(IMPULSE_BUILD_APP)
   # raylib is only used for the window, input and drawing
