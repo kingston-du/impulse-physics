@@ -1,5 +1,7 @@
 #include "physics/World.hpp"
 
+#include <algorithm>
+
 #include "physics/Collision.hpp"
 
 namespace impulse {
@@ -12,6 +14,7 @@ int World::addBody(const Body& body) {
 void World::step(float dt) {
     findContacts();
     integrateForces(dt);
+    solveVelocities();
     integrateVelocities(dt);
     if (useBounds) enforceBounds();
 }
@@ -38,6 +41,46 @@ void World::integrateForces(float dt) {
         if (b.isStatic()) continue;
         b.velocity += (gravity + b.invMass * b.force) * dt;
         b.angularVelocity += b.invInertia * b.torque * dt;
+    }
+}
+
+void World::solveVelocities() {
+    // sequential impulses: go over every contact a few times so the
+    // impulses can propagate through stacks and piles
+    for (int it = 0; it < iterations; ++it) {
+        for (const Manifold& m : contacts_) {
+            resolveContact(m);
+        }
+    }
+}
+
+void World::resolveContact(const Manifold& m) {
+    Body& A = bodies_[m.a];
+    Body& B = bodies_[m.b];
+    const Vec2 n = m.normal;
+
+    for (int i = 0; i < m.count; ++i) {
+        Vec2 rA = m.contacts[i].position - A.position;
+        Vec2 rB = m.contacts[i].position - B.position;
+
+        // velocity of the contact point on B relative to A
+        Vec2 dv = (B.velocity + cross(B.angularVelocity, rB)) -
+                  (A.velocity + cross(A.angularVelocity, rA));
+        float vn = dot(dv, n);
+        if (vn > 0.0f) continue; // already separating
+
+        float e = std::min(A.restitution, B.restitution);
+        if (-vn < restitutionThreshold) e = 0.0f;
+
+        float rnA = cross(rA, n);
+        float rnB = cross(rB, n);
+        float k = A.invMass + B.invMass + rnA * rnA * A.invInertia + rnB * rnB * B.invInertia;
+        if (k <= 0.0f) continue;
+
+        float j = -(1.0f + e) * vn / k;
+        Vec2 impulse = n * j;
+        A.applyImpulse(-impulse, rA);
+        B.applyImpulse(impulse, rB);
     }
 }
 

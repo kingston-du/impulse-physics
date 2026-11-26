@@ -11,6 +11,11 @@ namespace impulse {
 class World {
 public:
     Vec2 gravity{0.0f, -9.81f};
+    int iterations = 10;
+
+    // closing speeds below this (m/s) get no bounce, otherwise resting
+    // contacts keep hopping because gravity adds a little speed every step
+    float restitutionThreshold = 0.5f;
 
     // circles get clamped inside this box when enabled. stand in for real
     // walls until there's a static shape to collide with.
@@ -30,6 +35,8 @@ public:
 private:
     void findContacts();
     void integrateForces(float dt);
+    void solveVelocities();
+    void resolveContact(const Manifold& m);
     void integrateVelocities(float dt);
     void enforceBounds();
 
