@@ -11,6 +11,7 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 endif()
 
 option(IMPULSE_BUILD_TESTS "Build unit tests" ON)
+option(IMPULSE_BUILD_APP "Build the raylib demo app" ON)
 
 include(FetchContent)
 
@@ -24,9 +25,22 @@ else()
   set(IMPULSE_WARNINGS -Wall -Wextra -Wpedantic)
 endif()
 
-add_executable(impulse src/app/main.cpp)
-target_link_libraries(impulse PRIVATE impulse_core)
-target_compile_options(impulse PRIVATE ${IMPULSE_WARNINGS})
+if(IMPULSE_BUILD_APP)
+  # raylib is only used for the window, input and drawing
+  set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+  set(BUILD_GAMES OFF CACHE BOOL "" FORCE)
+  FetchContent_Declare(
+    raylib
+    GIT_REPOSITORY https://github.com/raysan5/raylib.git
+    GIT_TAG 5.5
+    GIT_SHALLOW TRUE
+  )
+  FetchContent_MakeAvailable(raylib)
+
+  add_executable(impulse src/app/main.cpp)
+  target_link_libraries(impulse PRIVATE impulse_core raylib)
+  target_compile_options(impulse PRIVATE ${IMPULSE_WARNINGS})
+endif()
 
 if(IMPULSE_BUILD_TESTS)
   FetchContent_Declare(
