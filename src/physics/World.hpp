@@ -4,6 +4,7 @@
 
 #include "math/Vec2.hpp"
 #include "physics/Body.hpp"
+#include "physics/BroadPhase.hpp"
 #include "physics/Manifold.hpp"
 
 namespace impulse {
@@ -34,6 +35,8 @@ public:
     Vec2 boundsMin{0.0f, 0.0f};
     Vec2 boundsMax{64.0f, 36.0f};
 
+    BroadPhase broadPhase;
+
     int addBody(const Body& body);
     void clear() { bodies_.clear(); }
 
@@ -55,6 +58,7 @@ private:
 
     std::vector<Body> bodies_;
     std::vector<Manifold> contacts_;
+    std::vector<BodyPair> pairs_;
     StepStats stats_;
 };
 

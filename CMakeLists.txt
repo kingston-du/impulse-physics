@@ -24,6 +24,7 @@ endif()
 # all the physics lives here, no raylib allowed
 add_library(impulse_core STATIC
   src/physics/Body.cpp
+  src/physics/BroadPhase.cpp
   src/physics/Collision.cpp
   src/physics/World.cpp
 )

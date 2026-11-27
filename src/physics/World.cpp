@@ -29,19 +29,15 @@ void World::step(float dt) {
 
 void World::findContacts() {
     contacts_.clear();
-    stats_.pairsTested = 0;
-    const int n = static_cast<int>(bodies_.size());
-    // brute force O(n^2) for now
-    for (int i = 0; i < n; ++i) {
-        for (int j = i + 1; j < n; ++j) {
-            if (bodies_[i].isStatic() && bodies_[j].isStatic()) continue;
-            ++stats_.pairsTested;
-            Manifold m;
-            if (collide(bodies_[i], bodies_[j], m)) {
-                m.a = i;
-                m.b = j;
-                contacts_.push_back(m);
-            }
+    broadPhase.findPairs(bodies_, pairs_);
+    stats_.pairsTested = broadPhase.pairsTested();
+
+    for (const BodyPair& p : pairs_) {
+        Manifold m;
+        if (collide(bodies_[p.a], bodies_[p.b], m)) {
+            m.a = p.a;
+            m.b = p.b;
+            contacts_.push_back(m);
         }
     }
 }
