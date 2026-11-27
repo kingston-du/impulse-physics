@@ -1,6 +1,8 @@
 #include <raylib.h>
 
 #include <cstdlib>
+#include <cstring>
+#include <string>
 
 #include "app/Scenes.hpp"
 #include "physics/World.hpp"
@@ -92,9 +94,30 @@ void handleKeys(World& world, Scenes& scenes, DebugFlags& flags) {
     }
 }
 
+// command line options, mostly so I can record the README gif without
+// fighting with screen capture software
+struct Options {
+    int scene = 2;
+    const char* recordDir = nullptr; // save every frame as a png here
+    int maxFrames = 0;               // quit after this many frames (0 = never)
+};
+
+Options parseArgs(int argc, char** argv) {
+    Options o;
+    for (int i = 1; i < argc; ++i) {
+        bool hasNext = i + 1 < argc;
+        if (!std::strcmp(argv[i], "--scene") && hasNext) o.scene = std::atoi(argv[++i]);
+        else if (!std::strcmp(argv[i], "--record") && hasNext) o.recordDir = argv[++i];
+        else if (!std::strcmp(argv[i], "--frames") && hasNext) o.maxFrames = std::atoi(argv[++i]);
+    }
+    return o;
+}
+
 } // namespace
 
-int main() {
+int main(int argc, char** argv) {
+    Options opts = parseArgs(argc, argv);
+
     SetConfigFlags(FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT);
     InitWindow(kScreenW, kScreenH, "impulse");
     SetTargetFPS(60);
@@ -102,11 +125,12 @@ int main() {
     const Vec2 worldSize{kScreenW / kPixelsPerMeter, kScreenH / kPixelsPerMeter};
     World world;
     Scenes scenes(worldSize);
-    scenes.load(2, world);
+    scenes.load(opts.scene, world);
 
     float accumulator = 0.0f;
     ThrowState throwState;
     DebugFlags flags;
+    int frame = 0;
 
     while (!WindowShouldClose()) {
         handleMouse(world, throwState);
@@ -116,6 +140,9 @@ int main() {
         // spiral of death
         float frameTime = GetFrameTime();
         if (frameTime > 0.25f) frameTime = 0.25f;
+        // when recording, pretend every frame took exactly 1/60 s so the
+        // video plays back at the right speed even if saving pngs is slow
+        if (opts.recordDir) frameTime = 1.0f / 60.0f;
         accumulator += frameTime;
 
         while (accumulator >= kDt) {
@@ -141,6 +168,15 @@ int main() {
         }
         drawHud(world, scenes);
         EndDrawing();
+
+        ++frame;
+        if (opts.recordDir) {
+            Image img = LoadImageFromScreen();
+            std::string path = std::string(opts.recordDir) + TextFormat("/frame_%05d.png", frame);
+            ExportImage(img, path.c_str());
+            UnloadImage(img);
+        }
+        if (opts.maxFrames > 0 && frame >= opts.maxFrames) break;
     }
 
     CloseWindow();
