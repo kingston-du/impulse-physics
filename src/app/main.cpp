@@ -51,6 +51,16 @@ void handleMouse(World& world, ThrowState& t) {
     }
 }
 
+void drawHud(const World& world) {
+    const StepStats& st = world.stats();
+    DrawRectangle(10, 10, 260, 120, Color{0, 0, 0, 150});
+    DrawText(TextFormat("FPS: %d", GetFPS()), 20, 20, 18, RAYWHITE);
+    DrawText(TextFormat("bodies: %d", static_cast<int>(world.bodies().size())), 20, 42, 18, RAYWHITE);
+    DrawText(TextFormat("contacts: %d", st.contactCount), 20, 64, 18, RAYWHITE);
+    DrawText(TextFormat("step: %.3f ms", st.stepMs), 20, 86, 18, RAYWHITE);
+    DrawText(TextFormat("pairs tested: %lld", st.pairsTested), 20, 108, 18, RAYWHITE);
+}
+
 } // namespace
 
 int main() {
@@ -99,8 +109,7 @@ int main() {
         if (throwState.dragging) {
             DrawLineEx(toScreen(throwState.start), GetMousePosition(), 2.0f, YELLOW);
         }
-        DrawText("impulse", 20, 20, 20, RAYWHITE);
-        DrawFPS(kScreenW - 100, 20);
+        drawHud(world);
         EndDrawing();
     }
 

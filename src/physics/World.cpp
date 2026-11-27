@@ -1,6 +1,7 @@
 #include "physics/World.hpp"
 
 #include <algorithm>
+#include <chrono>
 
 #include "physics/Collision.hpp"
 
@@ -12,21 +13,29 @@ int World::addBody(const Body& body) {
 }
 
 void World::step(float dt) {
+    auto t0 = std::chrono::steady_clock::now();
+
     findContacts();
     integrateForces(dt);
     solveVelocities();
     integrateVelocities(dt);
     correctPositions();
     if (useBounds) enforceBounds();
+
+    auto t1 = std::chrono::steady_clock::now();
+    stats_.stepMs = std::chrono::duration<double, std::milli>(t1 - t0).count();
+    stats_.contactCount = static_cast<int>(contacts_.size());
 }
 
 void World::findContacts() {
     contacts_.clear();
+    stats_.pairsTested = 0;
     const int n = static_cast<int>(bodies_.size());
     // brute force O(n^2) for now
     for (int i = 0; i < n; ++i) {
         for (int j = i + 1; j < n; ++j) {
             if (bodies_[i].isStatic() && bodies_[j].isStatic()) continue;
+            ++stats_.pairsTested;
             Manifold m;
             if (collide(bodies_[i], bodies_[j], m)) {
                 m.a = i;

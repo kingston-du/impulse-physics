@@ -8,6 +8,12 @@
 
 namespace impulse {
 
+struct StepStats {
+    double stepMs = 0.0;      // wall time of the last step()
+    long long pairsTested = 0; // narrow phase calls
+    int contactCount = 0;     // manifolds that actually touched
+};
+
 class World {
 public:
     Vec2 gravity{0.0f, -9.81f};
@@ -36,6 +42,7 @@ public:
     std::vector<Body>& bodies() { return bodies_; }
     const std::vector<Body>& bodies() const { return bodies_; }
     const std::vector<Manifold>& contacts() const { return contacts_; }
+    const StepStats& stats() const { return stats_; }
 
 private:
     void findContacts();
@@ -48,6 +55,7 @@ private:
 
     std::vector<Body> bodies_;
     std::vector<Manifold> contacts_;
+    StepStats stats_;
 };
 
 } // namespace impulse
