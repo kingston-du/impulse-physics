@@ -57,7 +57,10 @@ if(IMPULSE_BUILD_TESTS)
   FetchContent_MakeAvailable(Catch2)
 
   enable_testing()
-  add_executable(impulse_tests tests/test_vec2.cpp)
+  add_executable(impulse_tests
+    tests/test_vec2.cpp
+    tests/test_collision.cpp
+  )
   target_link_libraries(impulse_tests PRIVATE impulse_core Catch2::Catch2WithMain)
   target_compile_options(impulse_tests PRIVATE ${IMPULSE_WARNINGS})
 
