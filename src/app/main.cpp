@@ -55,8 +55,29 @@ void handleMouse(World& world, ThrowState& t) {
 }
 
 struct DebugFlags {
+    bool showContacts = false;
     bool showGrid = false;
 };
+
+// a few colors to pick from so piles don't look like one blue blob
+Color bodyColor(int index) {
+    static const Color palette[] = {
+        {102, 178, 255, 255}, {255, 159, 67, 255}, {120, 224, 143, 255},
+        {255, 107, 129, 255}, {200, 160, 255, 255}, {255, 221, 89, 255},
+    };
+    return palette[static_cast<unsigned>(index) * 2654435761u % 6];
+}
+
+void drawContacts(const World& world) {
+    for (const Manifold& m : world.contacts()) {
+        for (int i = 0; i < m.count; ++i) {
+            Vector2 p = toScreen(m.contacts[i].position);
+            Vector2 tip = toScreen(m.contacts[i].position + m.normal * 0.6f);
+            DrawLineV(p, tip, YELLOW);
+            DrawCircleV(p, 2.5f, RED);
+        }
+    }
+}
 
 void drawGrid(const World& world) {
     float cs = world.broadPhase.lastCellSize();
@@ -87,6 +108,7 @@ void handleKeys(World& world, Scenes& scenes, DebugFlags& flags) {
         if (IsKeyPressed(KEY_ONE + k - 1)) scenes.load(k, world);
     }
     if (IsKeyPressed(KEY_R)) scenes.load(scenes.current(), world);
+    if (IsKeyPressed(KEY_F1)) flags.showContacts = !flags.showContacts;
     if (IsKeyPressed(KEY_F2)) flags.showGrid = !flags.showGrid;
     if (IsKeyPressed(KEY_F3)) {
         auto& m = world.broadPhase.mode;
@@ -154,15 +176,13 @@ int main(int argc, char** argv) {
         BeginDrawing();
         ClearBackground(Color{24, 26, 32, 255});
         if (flags.showGrid) drawGrid(world);
-        for (const Body& b : world.bodies()) {
+        const auto& bodies = world.bodies();
+        for (size_t i = 0; i < bodies.size(); ++i) {
+            const Body& b = bodies[i];
             const auto& c = std::get<Circle>(b.shape);
-            DrawCircleV(toScreen(b.position), c.radius * kPixelsPerMeter, Color{120, 180, 255, 255});
+            DrawCircleV(toScreen(b.position), c.radius * kPixelsPerMeter, bodyColor(static_cast<int>(i)));
         }
-        for (const Manifold& m : world.contacts()) {
-            for (int i = 0; i < m.count; ++i) {
-                DrawCircleV(toScreen(m.contacts[i].position), 3.0f, RED);
-            }
-        }
+        if (flags.showContacts) drawContacts(world);
         if (throwState.dragging) {
             DrawLineEx(toScreen(throwState.start), GetMousePosition(), 2.0f, YELLOW);
         }
