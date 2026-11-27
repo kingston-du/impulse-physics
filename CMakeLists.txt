@@ -43,7 +43,7 @@ if(IMPULSE_BUILD_APP)
   )
   FetchContent_MakeAvailable(raylib)
 
-  add_executable(impulse src/app/main.cpp)
+  add_executable(impulse src/app/main.cpp src/app/Scenes.cpp)
   target_link_libraries(impulse PRIVATE impulse_core raylib)
   target_compile_options(impulse PRIVATE ${IMPULSE_WARNINGS})
 endif()

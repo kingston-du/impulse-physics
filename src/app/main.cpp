@@ -2,6 +2,7 @@
 
 #include <cstdlib>
 
+#include "app/Scenes.hpp"
 #include "physics/World.hpp"
 
 using namespace impulse;
@@ -65,9 +66,9 @@ void drawGrid(const World& world) {
     for (float y = kScreenH; y > 0.0f; y -= px) DrawLineV({0, y}, {kScreenW, y}, c);
 }
 
-void drawHud(const World& world) {
+void drawHud(const World& world, const Scenes& scenes) {
     const StepStats& st = world.stats();
-    DrawRectangle(10, 10, 260, 142, Color{0, 0, 0, 150});
+    DrawRectangle(10, 10, 260, 164, Color{0, 0, 0, 150});
     DrawText(TextFormat("FPS: %d", GetFPS()), 20, 20, 18, RAYWHITE);
     DrawText(TextFormat("bodies: %d", static_cast<int>(world.bodies().size())), 20, 42, 18, RAYWHITE);
     DrawText(TextFormat("contacts: %d", st.contactCount), 20, 64, 18, RAYWHITE);
@@ -76,9 +77,14 @@ void drawHud(const World& world) {
     bool grid = world.broadPhase.mode == BroadPhaseMode::Grid;
     DrawText(grid ? "broad phase: grid" : "broad phase: brute force", 20, 130, 18,
              grid ? GREEN : ORANGE);
+    DrawText(TextFormat("scene %d: %s", scenes.current(), scenes.name()), 20, 152, 18, RAYWHITE);
 }
 
-void handleKeys(World& world, DebugFlags& flags) {
+void handleKeys(World& world, Scenes& scenes, DebugFlags& flags) {
+    for (int k = 1; k <= 5; ++k) {
+        if (IsKeyPressed(KEY_ONE + k - 1)) scenes.load(k, world);
+    }
+    if (IsKeyPressed(KEY_R)) scenes.load(scenes.current(), world);
     if (IsKeyPressed(KEY_F2)) flags.showGrid = !flags.showGrid;
     if (IsKeyPressed(KEY_F3)) {
         auto& m = world.broadPhase.mode;
@@ -93,15 +99,10 @@ int main() {
     InitWindow(kScreenW, kScreenH, "impulse");
     SetTargetFPS(60);
 
+    const Vec2 worldSize{kScreenW / kPixelsPerMeter, kScreenH / kPixelsPerMeter};
     World world;
-    world.boundsMax = {kScreenW / kPixelsPerMeter, kScreenH / kPixelsPerMeter};
-
-    for (int i = 0; i < 10; ++i) {
-        Body b(Circle{0.5f + 0.1f * i}, Vec2{6.0f + 5.0f * i, 30.0f});
-        b.velocity = {(i % 2 ? 1.0f : -1.0f) * 4.0f, 0.0f};
-        b.restitution = 0.8f;
-        world.addBody(b);
-    }
+    Scenes scenes(worldSize);
+    scenes.load(2, world);
 
     float accumulator = 0.0f;
     ThrowState throwState;
@@ -109,7 +110,7 @@ int main() {
 
     while (!WindowShouldClose()) {
         handleMouse(world, throwState);
-        handleKeys(world, flags);
+        handleKeys(world, scenes, flags);
 
         // clamp so a long frame (window drag, breakpoint) doesn't cause a
         // spiral of death
@@ -118,6 +119,7 @@ int main() {
         accumulator += frameTime;
 
         while (accumulator >= kDt) {
+            scenes.update(world);
             world.step(kDt);
             accumulator -= kDt;
         }
@@ -137,7 +139,7 @@ int main() {
         if (throwState.dragging) {
             DrawLineEx(toScreen(throwState.start), GetMousePosition(), 2.0f, YELLOW);
         }
-        drawHud(world);
+        drawHud(world, scenes);
         EndDrawing();
     }
 
