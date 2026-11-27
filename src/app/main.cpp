@@ -51,14 +51,39 @@ void handleMouse(World& world, ThrowState& t) {
     }
 }
 
+struct DebugFlags {
+    bool showGrid = false;
+};
+
+void drawGrid(const World& world) {
+    float cs = world.broadPhase.lastCellSize();
+    float px = cs * kPixelsPerMeter;
+    if (px < 4.0f) return; // too dense to be useful
+    Color c{255, 255, 255, 25};
+    for (float x = 0.0f; x < kScreenW; x += px) DrawLineV({x, 0}, {x, kScreenH}, c);
+    // cells are anchored at world y = 0, which is the bottom of the screen
+    for (float y = kScreenH; y > 0.0f; y -= px) DrawLineV({0, y}, {kScreenW, y}, c);
+}
+
 void drawHud(const World& world) {
     const StepStats& st = world.stats();
-    DrawRectangle(10, 10, 260, 120, Color{0, 0, 0, 150});
+    DrawRectangle(10, 10, 260, 142, Color{0, 0, 0, 150});
     DrawText(TextFormat("FPS: %d", GetFPS()), 20, 20, 18, RAYWHITE);
     DrawText(TextFormat("bodies: %d", static_cast<int>(world.bodies().size())), 20, 42, 18, RAYWHITE);
     DrawText(TextFormat("contacts: %d", st.contactCount), 20, 64, 18, RAYWHITE);
     DrawText(TextFormat("step: %.3f ms", st.stepMs), 20, 86, 18, RAYWHITE);
     DrawText(TextFormat("pairs tested: %lld", st.pairsTested), 20, 108, 18, RAYWHITE);
+    bool grid = world.broadPhase.mode == BroadPhaseMode::Grid;
+    DrawText(grid ? "broad phase: grid" : "broad phase: brute force", 20, 130, 18,
+             grid ? GREEN : ORANGE);
+}
+
+void handleKeys(World& world, DebugFlags& flags) {
+    if (IsKeyPressed(KEY_F2)) flags.showGrid = !flags.showGrid;
+    if (IsKeyPressed(KEY_F3)) {
+        auto& m = world.broadPhase.mode;
+        m = (m == BroadPhaseMode::Grid) ? BroadPhaseMode::BruteForce : BroadPhaseMode::Grid;
+    }
 }
 
 } // namespace
@@ -80,9 +105,11 @@ int main() {
 
     float accumulator = 0.0f;
     ThrowState throwState;
+    DebugFlags flags;
 
     while (!WindowShouldClose()) {
         handleMouse(world, throwState);
+        handleKeys(world, flags);
 
         // clamp so a long frame (window drag, breakpoint) doesn't cause a
         // spiral of death
@@ -97,6 +124,7 @@ int main() {
 
         BeginDrawing();
         ClearBackground(Color{24, 26, 32, 255});
+        if (flags.showGrid) drawGrid(world);
         for (const Body& b : world.bodies()) {
             const auto& c = std::get<Circle>(b.shape);
             DrawCircleV(toScreen(b.position), c.radius * kPixelsPerMeter, Color{120, 180, 255, 255});
