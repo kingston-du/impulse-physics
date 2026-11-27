@@ -1,5 +1,7 @@
 #include <raylib.h>
 
+#include <cstdlib>
+
 #include "physics/World.hpp"
 
 using namespace impulse;
@@ -16,6 +18,37 @@ constexpr float kDt = 1.0f / kPhysicsHz;
 // physics is y up in meters, raylib is y down in pixels
 Vector2 toScreen(Vec2 p) {
     return {p.x * kPixelsPerMeter, kScreenH - p.y * kPixelsPerMeter};
+}
+
+Vec2 toWorld(Vector2 p) {
+    return {p.x / kPixelsPerMeter, (kScreenH - p.y) / kPixelsPerMeter};
+}
+
+float randRange(float lo, float hi) {
+    return lo + (hi - lo) * (static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX));
+}
+
+// drag to throw: press sets the spawn point, release sets the velocity
+struct ThrowState {
+    bool dragging = false;
+    Vec2 start;
+};
+
+constexpr float kThrowScale = 3.0f;
+
+void handleMouse(World& world, ThrowState& t) {
+    Vec2 mouse = toWorld(GetMousePosition());
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        t.dragging = true;
+        t.start = mouse;
+    }
+    if (t.dragging && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+        t.dragging = false;
+        Body b(Circle{randRange(0.4f, 1.0f)}, t.start);
+        b.velocity = (mouse - t.start) * kThrowScale;
+        b.restitution = 0.5f;
+        world.addBody(b);
+    }
 }
 
 } // namespace
@@ -36,8 +69,11 @@ int main() {
     }
 
     float accumulator = 0.0f;
+    ThrowState throwState;
 
     while (!WindowShouldClose()) {
+        handleMouse(world, throwState);
+
         // clamp so a long frame (window drag, breakpoint) doesn't cause a
         // spiral of death
         float frameTime = GetFrameTime();
@@ -59,6 +95,9 @@ int main() {
             for (int i = 0; i < m.count; ++i) {
                 DrawCircleV(toScreen(m.contacts[i].position), 3.0f, RED);
             }
+        }
+        if (throwState.dragging) {
+            DrawLineEx(toScreen(throwState.start), GetMousePosition(), 2.0f, YELLOW);
         }
         DrawText("impulse", 20, 20, 20, RAYWHITE);
         DrawFPS(kScreenW - 100, 20);
