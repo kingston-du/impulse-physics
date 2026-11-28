@@ -90,10 +90,12 @@ void drawGrid(const World& world) {
     for (float y = kScreenH; y > 0.0f; y -= px) DrawLineV({0, y}, {kScreenW, y}, c);
 }
 
-void drawHud(const World& world, const Scenes& scenes) {
+void drawHud(const World& world, const Scenes& scenes, bool recording) {
     const StepStats& st = world.stats();
     DrawRectangle(10, 10, 260, 164, Color{0, 0, 0, 150});
-    DrawText(TextFormat("FPS: %d", GetFPS()), 20, 20, 18, RAYWHITE);
+    // real fps is meaningless while every frame gets saved to disk
+    if (recording) DrawText("FPS: (recording)", 20, 20, 18, RAYWHITE);
+    else DrawText(TextFormat("FPS: %d", GetFPS()), 20, 20, 18, RAYWHITE);
     DrawText(TextFormat("bodies: %d", static_cast<int>(world.bodies().size())), 20, 42, 18, RAYWHITE);
     DrawText(TextFormat("contacts: %d", st.contactCount), 20, 64, 18, RAYWHITE);
     DrawText(TextFormat("step: %.3f ms", st.stepMs), 20, 86, 18, RAYWHITE);
@@ -231,7 +233,7 @@ int main(int argc, char** argv) {
         if (throwState.dragging) {
             DrawLineEx(toScreen(throwState.start), GetMousePosition(), 2.0f, YELLOW);
         }
-        drawHud(world, scenes);
+        drawHud(world, scenes, opts.recordDir != nullptr);
         EndDrawing();
 
         ++frame;
