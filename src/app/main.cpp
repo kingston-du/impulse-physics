@@ -1,5 +1,6 @@
 #include <raylib.h>
 
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <string>
@@ -122,6 +123,7 @@ struct Options {
     int scene = 2;
     const char* recordDir = nullptr; // save every frame as a png here
     int maxFrames = 0;               // quit after this many frames (0 = never)
+    bool findMax = false;            // keep adding balls until we drop below 60 fps
 };
 
 Options parseArgs(int argc, char** argv) {
@@ -131,23 +133,65 @@ Options parseArgs(int argc, char** argv) {
         if (!std::strcmp(argv[i], "--scene") && hasNext) o.scene = std::atoi(argv[++i]);
         else if (!std::strcmp(argv[i], "--record") && hasNext) o.recordDir = argv[++i];
         else if (!std::strcmp(argv[i], "--frames") && hasNext) o.maxFrames = std::atoi(argv[++i]);
+        else if (!std::strcmp(argv[i], "--find-max")) o.findMax = true;
     }
     return o;
 }
+
+// Finds the biggest body count that still holds 60 fps with physics at
+// 120 Hz. Vsync is off so we can see how long a frame really takes. Adds a
+// row of balls every half second and stops once the average frame time over
+// the last second goes past 16.7 ms.
+struct MaxFinder {
+    float rowTimer = 0.0f;
+    double frameSum = 0.0;
+    int frameCount = 0;
+    int lastGood = 0;
+
+    // returns true when done
+    bool update(World& world, Vec2 worldSize, float frameTime) {
+        frameSum += frameTime;
+        ++frameCount;
+        if (frameCount == 60) {
+            double avg = frameSum / frameCount;
+            int n = static_cast<int>(world.bodies().size());
+            std::printf("bodies %d  avg frame %.2f ms\n", n, avg * 1000.0);
+            if (avg > 1.0 / 60.0) {
+                std::printf("max bodies at 60 fps: %d\n", lastGood);
+                return true;
+            }
+            lastGood = n;
+            frameSum = 0.0;
+            frameCount = 0;
+        }
+
+        rowTimer += frameTime;
+        if (rowTimer > 0.5f) {
+            rowTimer = 0.0f;
+            const float r = 0.15f;
+            for (float x = 0.5f; x < worldSize.x - 0.5f; x += 2.2f * r) {
+                world.addBody(Body(Circle{r}, Vec2{x, worldSize.y - 1.0f}));
+            }
+        }
+        return false;
+    }
+};
 
 } // namespace
 
 int main(int argc, char** argv) {
     Options opts = parseArgs(argc, argv);
 
-    SetConfigFlags(FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT);
+    SetConfigFlags(opts.findMax ? FLAG_MSAA_4X_HINT : (FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT));
     InitWindow(kScreenW, kScreenH, "impulse");
-    SetTargetFPS(60);
+    SetTargetFPS(opts.findMax ? 0 : 60);
 
     const Vec2 worldSize{kScreenW / kPixelsPerMeter, kScreenH / kPixelsPerMeter};
     World world;
     Scenes scenes(worldSize);
     scenes.load(opts.scene, world);
+    MaxFinder maxFinder;
+    if (opts.findMax) world.clear();
 
     float accumulator = 0.0f;
     ThrowState throwState;
@@ -165,6 +209,7 @@ int main(int argc, char** argv) {
         // when recording, pretend every frame took exactly 1/60 s so the
         // video plays back at the right speed even if saving pngs is slow
         if (opts.recordDir) frameTime = 1.0f / 60.0f;
+        if (opts.findMax && maxFinder.update(world, worldSize, GetFrameTime())) break;
         accumulator += frameTime;
 
         while (accumulator >= kDt) {
