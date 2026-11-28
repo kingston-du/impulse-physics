@@ -31,6 +31,11 @@ add_library(impulse_core STATIC
 target_include_directories(impulse_core PUBLIC src)
 target_compile_options(impulse_core PRIVATE ${IMPULSE_WARNINGS})
 
+# headless benchmark, no raylib needed
+add_executable(bench bench/bench.cpp)
+target_link_libraries(bench PRIVATE impulse_core)
+target_compile_options(bench PRIVATE ${IMPULSE_WARNINGS})
+
 if(IMPULSE_BUILD_APP)
   # raylib is only used for the window, input and drawing
   set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
